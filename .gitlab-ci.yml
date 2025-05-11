@@ -1,0 +1,70 @@
+image: maven:3.9.5-eclipse-temurin-21
+
+stages:
+  - lint
+  - build
+  - test
+  - package
+  - debug
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=UserManagement/.m2/repository"
+  PROJECT_DIR: "UserManagement"
+
+before_script:
+  - java -version
+  - mvn -version
+  - export MAVEN_OPTS
+
+lint:
+  stage: lint
+  script:
+    - cd $PROJECT_DIR && mvn checkstyle:check || true
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    paths:
+      - $PROJECT_DIR/.m2/repository
+    policy: pull-push
+
+build:
+  stage: build
+  script:
+    - cd $PROJECT_DIR && mvn clean install -DskipTests
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    paths:
+      - $PROJECT_DIR/.m2/repository
+    policy: pull-push
+
+test:
+  stage: test
+  script:
+    - cd $PROJECT_DIR && mvn test
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    paths:
+      - $PROJECT_DIR/.m2/repository
+    policy: pull-push
+
+package:
+  stage: package
+  script:
+    - cd $PROJECT_DIR && mvn clean package shade:shade
+  artifacts:
+    paths:
+      - $PROJECT_DIR/target/*.jar
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    paths:
+      - $PROJECT_DIR/.m2/repository
+    policy: pull-push
+
+
+
+debug-jar:
+  stage: debug
+  script:
+    - cd $PROJECT_DIR
+    - ls -l target/
+    - test -f target/UserManagement-0.0.1-SNAPSHOT.jar && jar tf target/UserManagement-0.0.1-SNAPSHOT.jar || echo "JAR file not found"
+  needs: ["package"]
